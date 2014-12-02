@@ -1,3 +1,4 @@
+*~
 *.o
 *.ko
 *.obj
@@ -15,3 +16,6 @@
 *.out
 *.app
 *.hex
+*.smdh
+build/
+lib/
