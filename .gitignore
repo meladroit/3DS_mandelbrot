@@ -1,0 +1,17 @@
+*.o
+*.ko
+*.obj
+*.elf
+*.gch
+*.pch
+*.lib
+*.a
+*.la
+*.lo
+*.so
+*.so.*
+*.dylib
+*.3dsx
+*.out
+*.app
+*.hex
