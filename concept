@@ -1,0 +1,40 @@
+Mandelbrot for 3DS
+
+outputs:
+    top is 3D render of Mandelbrot
+        stereo separation = final iteration on that pixel
+        x\in(-2.375,1.375)
+        y\in(-1.125,1.125)
+    bottom is 2D render of Mandelbrot
+        x\in(-2,1)
+        y\in(-1.125,1.125)
+
+inputs:
+    START breaks, obviously
+    touchscreen tap should zoom view around point
+    B should reset to original view
+
+questions:
+    do we want to hardcode screen dimensions into this?
+        we could just gfxGetFramebuffer at the start to get fbWidth, fbHeight
+            twice, to get fbWidth_lower, fbHeight_lower
+    how do we handle lower screen render?
+        we don't want to run two Mandelbrot iterations at once
+        crop top dataset
+            deltaHeight = max(0,(fbHeight-fbHeight_lower)/2)
+            deltaWidth = max(0,(fbWidth-fbWidth_lower)/2)
+            paint thing at x+deltaWidth,y+deltaHeight on top to x,y on lower
+        
+
+constants:
+    #define XLOWER = -2.375
+    #define XUPPER = 1.375
+    #define YLOWER = -1.125
+    #define YUPPER = 1.125
+    #define MAX_ITER = 42
+variables:
+    #define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080) //thanks shinyquagsire23
+    float[fbWidth] x0;
+    float[fbHeight] y0;
+    float[fbWidth*fbHeight] x,y,iteration;
+    int iteration = 0;
