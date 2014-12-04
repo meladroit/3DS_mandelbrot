@@ -1,0 +1,9 @@
+3DS_mandelbrot
+==============
+
+This is a 3DS homebrew Mandelbrot set viewer, mostly for testing out 3DS homebrew. The aim is to have a stereoscopic view on the top screen and a semi-interactive view on the bottom screen.
+<<<<<<< HEAD
+=======
+
+Obviously this is still in *very* early stages of development ... don't hold your breath.
+>>>>>>> 02631a70823c5e7b26bddc052d12db0b4d073240

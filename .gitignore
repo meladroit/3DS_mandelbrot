@@ -12,10 +12,8 @@
 *.so
 *.so.*
 *.dylib
-*.3dsx
 *.out
 *.app
 *.hex
-*.smdh
 build/
 lib/
