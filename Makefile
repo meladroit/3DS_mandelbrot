@@ -31,9 +31,9 @@ BUILD		        :=	build
 SOURCES		      :=	source
 DATA		        :=	data
 INCLUDES	      :=	include
-APP_TITLE       :=  tuto
-APP_DESCRIPTION :=  3DS homebrew template
-APP_AUTHOR      :=  me!
+APP_TITLE       :=  3DS_mandelbrot
+APP_DESCRIPTION :=  3DS Mandelbrot set viewer
+APP_AUTHOR      :=  meladroit/willidleaway
 ICON            :=  logo.png
 
 #---------------------------------------------------------------------------------

@@ -16,8 +16,9 @@ inputs:
 
 questions:
     do we want to hardcode screen dimensions into this?
-        we could just gfxGetFramebuffer at the start to get fbWidth, fbHeight
-            twice, to get fbWidth_lower, fbHeight_lower
+        yes
+            400x240 top
+            320x240 lower
     how do we handle lower screen render?
         we don't want to run two Mandelbrot iterations at once
         crop top dataset
