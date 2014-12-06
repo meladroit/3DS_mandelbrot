@@ -1,0 +1,154 @@
+#include <3ds.h>
+// #include <string.h>
+// #include <math.h>
+
+#define XLOWER -2.375
+#define XUPPER 1.375
+#define YLOWER -1.125
+#define YUPPER 1.125
+#define SCALING 0.009375
+#define MAX_ITER 42
+#define APPROXIMATELY_INFINITY 1.0e5
+
+#define WIDTH_TOP 400
+#define WIDTH_BOTTOM 320
+#define WIDTH_DIFF (WIDTH_TOP-WIDTH_BOTTOM)/2
+#define HEIGHT 240
+#define ARRAY_LENGTH (u32)WIDTH_TOP*HEIGHT
+
+#define CONFIG_3D_SLIDERSTATE (*(float*)0x1FF81080) //thanks shinyquagsire23
+#define MAX_STEREO_SEPARATION 42
+#define STEREO_SEPARATION (MAX_STEREO_SEPARATION * CONFIG_3D_SLIDERSTATE)
+
+// oh god global variables
+int iteration[ARRAY_LENGTH];
+
+void calc_mandelbrot()
+{
+    //implementation of Wikipedia's escape time pseudocode
+    int i,j,k;
+    u32 idx;
+    float x0;
+    float y0;
+    float x,y;
+    float xtemp;
+
+    for (i=0;i<WIDTH_TOP;i++)
+    {
+        x0 = XLOWER+i*SCALING;
+        for (j=0;j<HEIGHT;j++)
+        {
+            y0 = YLOWER+j*SCALING;
+            idx = (u32)i*HEIGHT+j;
+            x=0.0;
+            y=0.0;
+            for (k=0;k<MAX_ITER;k++)
+            {
+                xtemp = x*x-y*y+x0;
+                y = 2*x*y+y0;
+                x = xtemp;
+                if (x*x+y*y>APPROXIMATELY_INFINITY)
+                {
+                    iteration[idx] = k;
+                    break;
+                }
+            }
+            if(k==MAX_ITER)
+            {
+                iteration[idx]=k;
+            }
+        }
+    }
+}
+
+void draw_mandelbrot()
+{
+    int i;
+    u32 idx;
+    float iter_frac;
+    int sep_iter;
+    int sep = (int)STEREO_SEPARATION/2;
+    u8* fbAdr_L;
+    u8* fbAdr_R;
+    u8* fbAdr_B;
+    fbAdr_L = gfxGetFramebuffer(GFX_TOP,GFX_LEFT,NULL,NULL);
+    fbAdr_R = gfxGetFramebuffer(GFX_TOP,GFX_RIGHT,NULL,NULL);
+    fbAdr_B = gfxGetFramebuffer(GFX_BOTTOM,GFX_LEFT,NULL,NULL);
+    for (idx=0;idx<ARRAY_LENGTH;idx++)
+    {
+        iter_frac = (float)iteration[idx]/MAX_ITER;
+        sep_iter = (int)(sep-sep*iter_frac);
+        i=(int)(idx/HEIGHT);
+        if ((i>=WIDTH_DIFF)&&(i<WIDTH_TOP-WIDTH_DIFF))
+        {
+            fbAdr_B[idx*3-3*WIDTH_DIFF*HEIGHT] = (u8)(255*iter_frac);
+        }
+        if (sep_iter<=i)
+        {
+            idx-=sep_iter*HEIGHT;
+            if ((u8)(255*iter_frac)>fbAdr_L[idx*3])
+            {
+                fbAdr_L[idx*3] = (u8)(255*iter_frac);
+            }
+        }
+        if (CONFIG_3D_SLIDERSTATE>0)
+        {
+            if (sep_iter<WIDTH_TOP-i)
+            {
+                idx+=2*sep_iter*HEIGHT;
+                if ((u8)(255*iter_frac)>fbAdr_R[idx*3])
+                {
+                    fbAdr_R[idx*3] = (u8)(255*iter_frac);
+                }
+            }
+        }
+    }
+}
+
+int main() //using xem's template
+{
+  // Initializations
+  srvInit();        // services
+  aptInit();        // applets
+  hidInit(NULL);    // input
+  gfxInit();        // graphics
+  gfxSet3D(true);   // stereoscopy (true: enabled / false: disabled)
+  u32 kDown;        // keys down
+  //u32 kHeld;        // keys pressed
+  //u32 kUp;          // keys up
+  calc_mandelbrot();
+
+  // Main loop
+  while (aptMainLoop())
+  {
+
+    // Wait for next frame
+    gspWaitForVBlank();
+
+    // Read which buttons are currently pressed or not
+    hidScanInput();
+    kDown = hidKeysDown();
+    //kHeld = hidKeysHeld();
+    //kUp = hidKeysUp();
+
+    // If START button is pressed, break loop and quit
+    if (kDown & KEY_START){
+      break;
+    }
+
+    draw_mandelbrot();
+
+    // Flush and swap framebuffers
+    gfxFlushBuffers();
+    gfxSwapBuffers();
+  }
+
+  // Exit
+  gfxExit();
+  hidExit();
+  aptExit();
+  srvExit();
+
+  // Return to hbmenu
+  return 0;
+}
