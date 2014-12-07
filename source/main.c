@@ -35,7 +35,11 @@ typedef struct Mandelbrot_params{
     int max_iter;
 } Mandelbrot_params;
 
-void draw_mandelbrot(Mandelbrot_params m, bool render_top, bool render_bottom)
+// eww global variables
+// (but I'm not competent enough to make this work as a struct var or pass pointers)
+int iteration[ARRAY_LENGTH];
+
+void calc_mandelbrot(Mandelbrot_params m)
 {
     //implementation of Wikipedia's escape time pseudocode
     int i,j,k;
@@ -47,15 +51,7 @@ void draw_mandelbrot(Mandelbrot_params m, bool render_top, bool render_bottom)
     float x,y;
     float xtemp;
     float scaling = SCALING/(int)(1<<m.zoomlevel);
-    int sep = (int)STEREO_SEPARATION/2;
-    float iter_frac;
-    int sep_iter;
-    u8* fbAdr_L = gfxGetFramebuffer(GFX_TOP,GFX_LEFT,NULL,NULL);
-    u8* fbAdr_R = gfxGetFramebuffer(GFX_TOP,GFX_RIGHT,NULL,NULL);
-    u8* fbAdr_B = gfxGetFramebuffer(GFX_BOTTOM,GFX_LEFT,NULL,NULL);
-    memset(fbAdr_L,0,WIDTH_TOP*HEIGHT*3);
-    memset(fbAdr_R,0,WIDTH_TOP*HEIGHT*3);
-
+    
     for (i=0;i<WIDTH_TOP;i++)
     {
         x0 = xlower+i*scaling;
@@ -72,62 +68,82 @@ void draw_mandelbrot(Mandelbrot_params m, bool render_top, bool render_bottom)
                 x = xtemp;
                 if (x*x+y*y>APPROXIMATELY_INFINITY)
                 {
-                    iter_frac = (float)k/m.max_iter;
-                    sep_iter = (int)(sep-sep*iter_frac);
-                    if (render_bottom && ((i>=WIDTH_DIFF)&&(i<WIDTH_TOP-WIDTH_DIFF)))
-                    {
-                        fbAdr_B[idx*3-3*WIDTH_DIFF*HEIGHT] = (u8)(255*iter_frac);
-                    }
-                    if (render_top)
-                    {
-                        if (sep_iter<=i)
-                        {
-                            idx-=sep_iter*HEIGHT;
-                            if ((u8)(255*iter_frac)>fbAdr_L[idx*3])
-                            {
-                                fbAdr_L[idx*3] = (u8)(255*iter_frac);
-                            }
-                        }
-                        if (CONFIG_3D_SLIDERSTATE>0)
-                        {
-                            if (sep_iter<WIDTH_TOP-i)
-                            {
-                                idx+=2*sep_iter*HEIGHT;
-                                if ((u8)(255*iter_frac)>fbAdr_R[idx*3])
-                                {
-                                    fbAdr_R[idx*3] = (u8)(255*iter_frac);
-                                }
-                            }
-                        }
-                    }
+                    iteration[idx] = k;
                     break;
                 }
             }
             if(k==m.max_iter)
             {
-                if (render_top)
-                {
-                    fbAdr_L[idx*3] = 255;
-                    fbAdr_R[idx*3] = 255;
-                }
-                if (render_bottom && (i>=WIDTH_DIFF)&&(i<WIDTH_TOP-WIDTH_DIFF))
-                {
-                    fbAdr_B[idx*3-3*WIDTH_DIFF*HEIGHT] = 255;
-                }
+                iteration[idx] = k;
             }
         }
     }
 }
 
+void draw_mandelbrot(Mandelbrot_params m)//, bool render_top, bool render_bottom)
+{
+    int i,j;
+    u32 idx;
+    int sep = (int)STEREO_SEPARATION/2;
+    float iter_frac;
+    int sep_iter;
+    u8* fbAdr_L = gfxGetFramebuffer(GFX_TOP,GFX_LEFT,NULL,NULL);
+    u8* fbAdr_R = gfxGetFramebuffer(GFX_TOP,GFX_RIGHT,NULL,NULL);
+    u8* fbAdr_B = gfxGetFramebuffer(GFX_BOTTOM,GFX_LEFT,NULL,NULL);
+    memset(fbAdr_L,0,WIDTH_TOP*HEIGHT*3);
+    memset(fbAdr_R,0,WIDTH_TOP*HEIGHT*3);
+    
+    for (i=0;i<WIDTH_TOP;i++)
+    {
+        for (j=0;j<HEIGHT;j++)
+        {
+            idx = (u32)i*HEIGHT+j;    
+            iter_frac = (float)iteration[idx]/m.max_iter;
+            sep_iter = (int)(sep-sep*iter_frac);
+            if ((i>=WIDTH_DIFF)&&(i<WIDTH_TOP-WIDTH_DIFF)) //(render_bottom && ((i>=WIDTH_DIFF)&&(i<WIDTH_TOP-WIDTH_DIFF)))
+            {
+                fbAdr_B[idx*3-3*WIDTH_DIFF*HEIGHT] = (u8)(255*iter_frac);
+            }
+            /*if (render_top)
+            {*/
+            if (sep_iter<=i)
+            {
+                idx-=sep_iter*HEIGHT;
+                if ((u8)(255*iter_frac)>fbAdr_L[idx*3])
+                {
+                    fbAdr_L[idx*3] = (u8)(255*iter_frac);
+                }
+            }
+            if (CONFIG_3D_SLIDERSTATE>0)
+            {
+                if (sep_iter<WIDTH_TOP-i)
+                {
+                    idx+=2*sep_iter*HEIGHT;
+                    if ((u8)(255*iter_frac)>fbAdr_R[idx*3])
+                    {
+                        fbAdr_R[idx*3] = (u8)(255*iter_frac);
+                    }
+                }
+            }
+            //}
+        }
+    }
+}
+
+/*
 void draw_mandelbrot_proper(Mandelbrot_params m, bool render_top, bool render_bottom)
 {
+    if (render_bottom)
+    {
+        calc_mandelbrot(m);
+    }
     gfxFlushBuffers();
     draw_mandelbrot(m, render_top,render_bottom);
     gfxSwapBuffers();
     gspWaitForVBlank();
     draw_mandelbrot(m, render_top,render_bottom);
     
-}
+}*/
 
 void Mandelbrot_init(Mandelbrot_params* m)
 {
@@ -169,13 +185,14 @@ int main() //using xem's template
   //u32 kHeld;        // keys pressed
   //u32 kUp;          // keys up
 
-  float monitor_3d_slider = CONFIG_3D_SLIDERSTATE;
+  //float monitor_3d_slider = CONFIG_3D_SLIDERSTATE;
   float temp_scaling; //,temp_x,temp_y;
   circlePosition c3po;
   touchHandler t;
   Mandelbrot_params m;
   Mandelbrot_init(&m);
-  draw_mandelbrot_proper(m,true,true);
+  calc_mandelbrot(m);
+  //draw_mandelbrot_proper(m,true,true);
   
   // Main loop
   while (aptMainLoop())
@@ -211,7 +228,8 @@ int main() //using xem's template
         {
             m.ycentr += c3po.dy*temp_scaling/4;
         }
-        draw_mandelbrot_proper(m,true,true);        
+        calc_mandelbrot(m);
+        //draw_mandelbrot_proper(m,true,true);        
     }
 
     if (handle_touch(&t))
@@ -219,20 +237,27 @@ int main() //using xem's template
         m.zoomlevel++;
         m.xcentr += (-WIDTH_BOTTOM/2+t.touch2.px)*temp_scaling;
         m.ycentr += (HEIGHT/2-t.touch2.py)*temp_scaling;
-        m.max_iter+=ITER_DIFF;
-        draw_mandelbrot_proper(m,true,true);        
+        calc_mandelbrot(m);
+        //draw_mandelbrot_proper(m,true,true);        
     }
     
     if (hidKeysDown() & KEY_B){
-      Mandelbrot_init(&m);
-      draw_mandelbrot_proper(m,true,true);
+        Mandelbrot_init(&m);
+        calc_mandelbrot(m);
+      //draw_mandelbrot_proper(m,true,true);
     }
     
-    if (CONFIG_3D_SLIDERSTATE!=monitor_3d_slider){
+    if (hidKeysDown() & KEY_A){
+        m.max_iter+=ITER_DIFF;
+        calc_mandelbrot(m);
+      //draw_mandelbrot_proper(m,true,true);
+    }
+    
+    /*if (CONFIG_3D_SLIDERSTATE!=monitor_3d_slider){
         monitor_3d_slider = CONFIG_3D_SLIDERSTATE;
         draw_mandelbrot_proper(m,true,false);
-    }
-    //draw_mandelbrot();
+    }*/
+    draw_mandelbrot(m);
 
     // Flush and swap framebuffers
     gfxFlushBuffers();
