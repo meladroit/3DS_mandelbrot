@@ -2,14 +2,15 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define XLOWER -2.375
-#define XUPPER 1.375
-#define YLOWER -1.125
-#define YUPPER 1.125
+#define XRANGE 3.75
+#define YRANGE 2.25
+#define XCENTR -0.5
+#define YCENTR 0.0
 #define SCALING 0.009375
 #define MAX_ITER 24
-#define ITER_DIFF 5
+#define ITER_DIFF 8
 #define APPROXIMATELY_INFINITY 1.0e5
+#define STICK_THRESHOLD 15
 
 #define WIDTH_TOP 400
 #define WIDTH_BOTTOM 320
@@ -28,10 +29,8 @@ typedef struct touchHandler{
 } touchHandler;
 
 typedef struct Mandelbrot_params{
-    float xlower;
-    float xupper;
-    float ylower;
-    float yupper;
+    float xcentr;
+    float ycentr;
     int zoomlevel;
     int max_iter;
 } Mandelbrot_params;
@@ -41,6 +40,8 @@ void draw_mandelbrot(Mandelbrot_params m, bool render_top, bool render_bottom)
     //implementation of Wikipedia's escape time pseudocode
     int i,j,k;
     u32 idx;
+    float xlower = m.xcentr-XRANGE/(2<<m.zoomlevel);
+    float ylower = m.ycentr-YRANGE/(2<<m.zoomlevel);
     float x0;
     float y0;
     float x,y;
@@ -57,10 +58,10 @@ void draw_mandelbrot(Mandelbrot_params m, bool render_top, bool render_bottom)
 
     for (i=0;i<WIDTH_TOP;i++)
     {
-        x0 = m.xlower+i*scaling;
+        x0 = xlower+i*scaling;
         for (j=0;j<HEIGHT;j++)
         {
-            y0 = m.ylower+j*scaling;
+            y0 = ylower+j*scaling;
             idx = (u32)i*HEIGHT+j;
             x=0.0;
             y=0.0;
@@ -130,10 +131,8 @@ void draw_mandelbrot_proper(Mandelbrot_params m, bool render_top, bool render_bo
 
 void Mandelbrot_init(Mandelbrot_params* m)
 {
-    m->xlower = XLOWER;
-    m->ylower = YLOWER;
-    m->xupper = XUPPER;
-    m->yupper = YUPPER;
+    m->xcentr = XCENTR;
+    m->ycentr = YCENTR;
     m->zoomlevel = 0;
     m->max_iter = MAX_ITER;
 }
@@ -171,7 +170,8 @@ int main() //using xem's template
   //u32 kUp;          // keys up
 
   float monitor_3d_slider = CONFIG_3D_SLIDERSTATE;
-  float temp_scaling,temp_x,temp_y;
+  float temp_scaling; //,temp_x,temp_y;
+  circlePosition c3po;
   touchHandler t;
   Mandelbrot_params m;
   Mandelbrot_init(&m);
@@ -195,16 +195,30 @@ int main() //using xem's template
       break;
     }
     
+    temp_scaling = SCALING/(int)(1<<m.zoomlevel);
+    hidCircleRead(&c3po);
+
+    bool xmoved = (abs(c3po.dx)>STICK_THRESHOLD);
+    bool ymoved = (abs(c3po.dy)>STICK_THRESHOLD);
+    if ((xmoved)||(ymoved))
+    {
+        if (xmoved)
+        {
+            m.xcentr += c3po.dx*temp_scaling/4;
+        }
+
+        if (ymoved)
+        {
+            m.ycentr += c3po.dy*temp_scaling/4;
+        }
+        draw_mandelbrot_proper(m,true,true);        
+    }
+
     if (handle_touch(&t))
     {
-        temp_scaling = SCALING/(int)(1<<m.zoomlevel);
         m.zoomlevel++;
-        temp_x = (t.touch2.px+WIDTH_BOTTOM/2-WIDTH_DIFF)*temp_scaling+m.xlower;
-        temp_y = (-t.touch2.py+HEIGHT+HEIGHT/4)*temp_scaling+m.ylower;
-        m.xlower = temp_x-temp_scaling*WIDTH_TOP/2;
-        m.xupper = temp_x+temp_scaling*WIDTH_TOP/2;
-        m.ylower = temp_y-temp_scaling*HEIGHT/2;
-        m.yupper = temp_y+temp_scaling*HEIGHT/2;
+        m.xcentr += (-WIDTH_BOTTOM/2+t.touch2.px)*temp_scaling;
+        m.ycentr += (HEIGHT/2-t.touch2.py)*temp_scaling;
         m.max_iter+=ITER_DIFF;
         draw_mandelbrot_proper(m,true,true);        
     }
