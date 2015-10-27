@@ -179,7 +179,7 @@ int main() //using xem's template
   srvInit();        // services
   aptInit();        // applets
   hidInit(NULL);    // input
-  gfxInit();        // graphics
+  gfxInitDefault(); // graphics
   gfxSet3D(true);   // stereoscopy (true: enabled / false: disabled)
   //u32 kDown;        // keys down
   //u32 kHeld;        // keys pressed
